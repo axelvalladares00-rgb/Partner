@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0f17" />
   <title>La magia</title>
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./styles.css?v=3" />
 </head>
 
 <body>
@@ -45,24 +45,40 @@
   </main>
 
   <script>
-    window.addEventListener("DOMContentLoaded", () => {
+    function runCurtains() {
       const overlay = document.getElementById("curtainOverlay");
-      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
       if (!overlay) return;
 
-      if (reduce) {
-        overlay.remove();
-        return;
-      }
+      // Si el teléfono tiene "reducir movimiento", igual mostramos cortinas pero más rápido
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-      setTimeout(() => overlay.classList.add("open"), 60);
-      setTimeout(() => overlay.classList.add("done"), 1350);
-      setTimeout(() => overlay.remove(), 1700);
+      // Asegura que el navegador “registre” el estado inicial antes de abrir (mejor en móvil)
+      overlay.classList.remove("open", "done");
+      overlay.offsetHeight;
 
+      const openDelay = reduce ? 0 : 60;
+      const doneDelay = reduce ? 250 : 1350;
+      const removeDelay = reduce ? 450 : 1700;
+
+      setTimeout(() => overlay.classList.add("open"), openDelay);
+      setTimeout(() => overlay.classList.add("done"), doneDelay);
+      setTimeout(() => overlay.remove(), removeDelay);
+    }
+
+    function wireMagicButton() {
       const btn = document.getElementById("magicBtn");
       const reveal = document.getElementById("reveal");
       btn?.addEventListener("click", () => reveal?.classList.toggle("show"));
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      runCurtains();
+      wireMagicButton();
+    });
+
+    // iOS a veces “recicla” páginas (bfcache). Esto asegura que vuelva a funcionar bien.
+    window.addEventListener("pageshow", (e) => {
+      if (e.persisted) runCurtains();
     });
   </script>
 </body>

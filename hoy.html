@@ -5,9 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0f17" />
   <title>Mini dosis de cariño</title>
-  <link rel="stylesheet" href="./styles.css?v=6" />
+  <link rel="stylesheet" href="./styles.css?v=7" />
 
   <style>
+    /* IMPORTANTE: evita que el reveal recorte la foto (en móvil se nota más) */
+    .reveal.show{
+      max-height: 2000px !important;
+    }
+
     /* Foto con transición (rápida y bonita) */
     .photoStage{
       margin-top: 12px;
@@ -87,21 +92,20 @@
           <span id="msgText">...</span>
         </p>
 
-        <!-- Foto (aparece con transición) -->
+        <!-- Foto -->
         <div class="photoStage" id="photoStage">
           <img
             id="photoImg"
-            src="/assets/nosotros.jpg?v=6"
+            src="/assets/nosotros.jpg?v=7"
             alt="Una foto bonita de nosotros"
             loading="eager"
           />
         </div>
 
         <div class="photoFallback" id="photoFallback">
-          🫶 No encontré la foto todavía.<br/>
-          Revisa que exista en el repo como:<br/>
-          <b>assets/nosotros.jpg</b> (minúsculas) o <b>assets/Nosotros.jpg</b> (con N mayúscula),<br/>
-          y que sea una imagen real (no un archivo vacío).
+          🫶 Aún no encontré la foto.<br/>
+          Asegúrate que la foto real exista en el repo como:<br/>
+          <b>assets/nosotros.jpg</b> (minúsculas) y que NO sea un archivo vacío creado con “New File”.
         </div>
 
         <p class="photoHint" id="photoHint">🫶 Un recordatorio visual de nosotros</p>
@@ -120,7 +124,6 @@
   </main>
 
   <script>
-    // ====== Mensajes ======
     const MESSAGES = [
       "Hoy no tienes que ser fuerte, solo honesta contigo misma.",
       "Aunque el mundo esté pesado, tú sigues siendo de mis cosas favoritas.",
@@ -134,7 +137,6 @@
       "Si hoy solo logras descansar, ya hiciste mucho."
     ];
 
-    // ====== Rotación sin repetirse (por visita) ======
     const ORDER_KEY = "mdc_order_v1";
     const INDEX_KEY = "mdc_index_v1";
 
@@ -187,7 +189,6 @@
       return next;
     }
 
-    // ====== Cortinas ======
     function runCurtains() {
       const overlay = document.getElementById("curtainOverlay");
       if (!overlay) return;
@@ -206,7 +207,6 @@
       setTimeout(() => overlay.remove(), removeDelay);
     }
 
-    // ====== Foto con aparición suave + fallback a "Nosotros.jpg" ======
     function showPhotoWithTransition() {
       const stage = document.getElementById("photoStage");
       const img = document.getElementById("photoImg");
@@ -215,8 +215,6 @@
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
       if (!stage || !img) return;
-
-      let triedUppercase = false;
 
       const showStage = () => {
         if (reduce) {
@@ -232,16 +230,8 @@
         if (fallback) fallback.classList.add("show");
       };
 
-      img.addEventListener("error", () => {
-        if (!triedUppercase) {
-          triedUppercase = true;
-          img.src = "/assets/Nosotros.jpg?v=6";
-          return;
-        }
-        showFallback();
-      }, { once: false });
+      img.addEventListener("error", showFallback, { once: true });
 
-      // Si ya cargó (cache), muestra de una
       if (img.complete && img.naturalWidth > 0) {
         showStage();
       } else {
@@ -249,7 +239,6 @@
       }
     }
 
-    // ====== UI ======
     function wireUI() {
       const magicBtn = document.getElementById("magicBtn");
       const anotherBtn = document.getElementById("anotherBtn");

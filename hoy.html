@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0f17" />
   <title>Mini dosis de cariño</title>
-  <link rel="stylesheet" href="./styles.css?v=3" />
+  <link rel="stylesheet" href="./styles.css?v=4" />
 </head>
 
 <body>
@@ -20,20 +20,27 @@
 
   <main class="phone" role="main">
     <header class="top">
-      <h1>🪄 Hola mi niña 👧🏻 </h1>
-      <p class="sub">Si estás leyendo esto, seguro el día está más pesado de lo que debería, Solo vengo a recordarte algo importante:</p>
+      <h1>🪄 Hola mi niña 👧🏻</h1>
+      <p class="sub">
+        Si estás leyendo esto, seguro el día está más pesado de lo que debería.
+        Solo vengo a recordarte algo importante:
+      </p>
     </header>
 
     <section class="card">
       <h2>Mini dosis de cariño</h2>
       <p>No estás sola en esta semana horrible, aquí sigo yo molestándote a la distancia. ✨</p>
 
-      <button class="btnWide" id="magicBtn" type="button">✨ Iniciar la función</button>
+      <button class="btnWide" id="magicBtn" type="button">✨ Abrir mi dosis</button>
 
-      <div class="reveal" id="reveal">
-        <p style="margin-top:12px;">
-          🎭 Ta-da! Esto es el inicio. Aquí iremos construyendo cosas bonitas poco a poco.
+      <div class="reveal" id="reveal" aria-live="polite">
+        <p style="margin-top:12px; font-size:16px; line-height:1.35;">
+          <span id="msgText">...</span>
         </p>
+
+        <button class="btnWide" id="anotherBtn" type="button" style="margin-top:10px;">
+          🔄 Otra frase
+        </button>
       </div>
     </section>
 
@@ -45,14 +52,85 @@
   </main>
 
   <script>
+    // ====== Mensajes ======
+    const MESSAGES = [
+      // Frases principales
+      "Hoy no tienes que ser fuerte, solo honesta contigo misma.",
+      "Aunque el mundo esté pesado, tú sigues siendo de mis cosas favoritas.",
+      "No importa cómo te sientas hoy, sigues siendo suficiente.",
+      "Si nadie te lo ha dicho hoy: lo estás haciendo mejor de lo que crees.",
+      "Tu versión cansada también merece amor.",
+
+      // Mini recordatorios
+      "Respira hondo 3 veces, yo respiro contigo desde acá.",
+      "Tienes permiso total de estar cansada y seguir siendo increíble.",
+      "Aunque el día esté feo, tú no eres el día: tú sigues siendo tú.",
+      "No hace falta que puedas con todo, a mí me basta con que sigas aquí.",
+      "Si hoy solo logras descansar, ya hiciste mucho."
+    ];
+
+    // ====== Rotación sin repetirse (por visita) ======
+    const ORDER_KEY = "mdc_order_v1";
+    const INDEX_KEY = "mdc_index_v1";
+
+    function shuffle(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function getOrCreateOrder() {
+      try {
+        const raw = localStorage.getItem(ORDER_KEY);
+        const parsed = raw ? JSON.parse(raw) : null;
+        if (Array.isArray(parsed) && parsed.length === MESSAGES.length) return parsed;
+      } catch (_) {}
+      const newOrder = shuffle([...Array(MESSAGES.length).keys()]);
+      localStorage.setItem(ORDER_KEY, JSON.stringify(newOrder));
+      localStorage.setItem(INDEX_KEY, "0");
+      return newOrder;
+    }
+
+    function getNextRotatingMessage() {
+      const order = getOrCreateOrder();
+      let idx = parseInt(localStorage.getItem(INDEX_KEY) || "0", 10);
+      if (Number.isNaN(idx) || idx < 0) idx = 0;
+
+      // Si ya se acabaron, reshuffle y reinicia
+      if (idx >= order.length) {
+        const newOrder = shuffle([...Array(MESSAGES.length).keys()]);
+        localStorage.setItem(ORDER_KEY, JSON.stringify(newOrder));
+        localStorage.setItem(INDEX_KEY, "1");
+        return MESSAGES[newOrder[0]];
+      }
+
+      const msg = MESSAGES[order[idx]];
+      localStorage.setItem(INDEX_KEY, String(idx + 1));
+      return msg;
+    }
+
+    function getRandomDifferent(current) {
+      if (MESSAGES.length <= 1) return current;
+      let next = current;
+      let guard = 0;
+      while (next === current && guard < 20) {
+        next = MESSAGES[Math.floor(Math.random() * MESSAGES.length)];
+        guard++;
+      }
+      return next;
+    }
+
+    // ====== Cortinas ======
     function runCurtains() {
       const overlay = document.getElementById("curtainOverlay");
       if (!overlay) return;
 
-      // Si el teléfono tiene "reducir movimiento", igual mostramos cortinas pero más rápido
+      // En móvil a veces “reduce motion”; igual mostramos, solo más rápido
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-      // Asegura que el navegador “registre” el estado inicial antes de abrir (mejor en móvil)
       overlay.classList.remove("open", "done");
       overlay.offsetHeight;
 
@@ -65,18 +143,33 @@
       setTimeout(() => overlay.remove(), removeDelay);
     }
 
-    function wireMagicButton() {
-      const btn = document.getElementById("magicBtn");
+    // ====== UI ======
+    function wireUI() {
+      const magicBtn = document.getElementById("magicBtn");
+      const anotherBtn = document.getElementById("anotherBtn");
       const reveal = document.getElementById("reveal");
-      btn?.addEventListener("click", () => reveal?.classList.toggle("show"));
+      const msgText = document.getElementById("msgText");
+
+      let currentMessage = getNextRotatingMessage();
+      if (msgText) msgText.textContent = currentMessage;
+
+      magicBtn?.addEventListener("click", () => {
+        reveal?.classList.add("show");
+      });
+
+      anotherBtn?.addEventListener("click", () => {
+        const next = getRandomDifferent(currentMessage);
+        currentMessage = next;
+        if (msgText) msgText.textContent = next;
+      });
     }
 
     window.addEventListener("DOMContentLoaded", () => {
       runCurtains();
-      wireMagicButton();
+      wireUI();
     });
 
-    // iOS a veces “recicla” páginas (bfcache). Esto asegura que vuelva a funcionar bien.
+    // iOS a veces “recicla” páginas (bfcache)
     window.addEventListener("pageshow", (e) => {
       if (e.persisted) runCurtains();
     });

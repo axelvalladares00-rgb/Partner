@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0f17" />
   <title>Mini dosis de cariño</title>
-  <link rel="stylesheet" href="./styles.css?v=5" />
+  <link rel="stylesheet" href="./styles.css?v=6" />
 
   <style>
     /* Foto con transición (rápida y bonita) */
@@ -37,6 +37,22 @@
       font-size: 12px;
       margin: 8px 0 0;
       text-align: center;
+    }
+
+    .photoFallback{
+      margin-top: 12px;
+      border-radius: 18px;
+      border: 1px dashed rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+      padding: 12px;
+      color: rgba(255,255,255,.78);
+      font-size: 13px;
+      line-height: 1.35;
+      display: none;
+    }
+
+    .photoFallback.show{
+      display: block;
     }
   </style>
 </head>
@@ -75,11 +91,19 @@
         <div class="photoStage" id="photoStage">
           <img
             id="photoImg"
-            src="./assets/nosotros.jpg"
+            src="/assets/nosotros.jpg?v=6"
             alt="Una foto bonita de nosotros"
             loading="eager"
           />
         </div>
+
+        <div class="photoFallback" id="photoFallback">
+          🫶 No encontré la foto todavía.<br/>
+          Revisa que exista en el repo como:<br/>
+          <b>assets/nosotros.jpg</b> (minúsculas) o <b>assets/Nosotros.jpg</b> (con N mayúscula),<br/>
+          y que sea una imagen real (no un archivo vacío).
+        </div>
+
         <p class="photoHint" id="photoHint">🫶 Un recordatorio visual de nosotros</p>
 
         <button class="btnWide" id="anotherBtn" type="button" style="margin-top:10px;">
@@ -182,35 +206,46 @@
       setTimeout(() => overlay.remove(), removeDelay);
     }
 
-    // ====== Foto con aparición suave ======
+    // ====== Foto con aparición suave + fallback a "Nosotros.jpg" ======
     function showPhotoWithTransition() {
       const stage = document.getElementById("photoStage");
       const img = document.getElementById("photoImg");
       const hint = document.getElementById("photoHint");
+      const fallback = document.getElementById("photoFallback");
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
       if (!stage || !img) return;
 
-      // Si no existe la imagen (mal nombre/ruta), ocultamos el bloque para que no se vea feo
-      img.addEventListener("error", () => {
-        stage.style.display = "none";
-        if (hint) hint.style.display = "none";
-      }, { once: true });
+      let triedUppercase = false;
 
-      const revealNow = () => {
+      const showStage = () => {
         if (reduce) {
           stage.classList.add("show");
           return;
         }
-        // pequeño delay para que se sienta “mágico” pero rápido
         setTimeout(() => stage.classList.add("show"), 180);
       };
 
+      const showFallback = () => {
+        stage.style.display = "none";
+        if (hint) hint.style.display = "none";
+        if (fallback) fallback.classList.add("show");
+      };
+
+      img.addEventListener("error", () => {
+        if (!triedUppercase) {
+          triedUppercase = true;
+          img.src = "/assets/Nosotros.jpg?v=6";
+          return;
+        }
+        showFallback();
+      }, { once: false });
+
       // Si ya cargó (cache), muestra de una
       if (img.complete && img.naturalWidth > 0) {
-        revealNow();
+        showStage();
       } else {
-        img.addEventListener("load", revealNow, { once: true });
+        img.addEventListener("load", showStage, { once: true });
       }
     }
 

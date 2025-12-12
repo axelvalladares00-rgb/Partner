@@ -144,3 +144,80 @@ body.noScroll{
 body.noScroll .phone{
   overflow: hidden;
 }
+/* ====== Cortinas (teatro) ====== */
+.curtainOverlay{
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,.35);
+}
+
+.curtainWrap{
+  width: 100%;
+  max-width: 420px;
+  height: 100dvh;
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.35);
+}
+
+.curtain{
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 52%;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.10), rgba(0,0,0,.15)),
+    repeating-linear-gradient(90deg, rgba(255,255,255,.10) 0 10px, rgba(0,0,0,.10) 10px 20px),
+    linear-gradient(90deg, #5a0012, #a4002a, #5a0012);
+  filter: saturate(1.1);
+  transition: transform 1200ms cubic-bezier(.22,1,.36,1);
+}
+
+.curtain.left{ left: 0; transform: translateX(0); }
+.curtain.right{ right: 0; transform: translateX(0); }
+
+.valance{
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 42px;
+  background: linear-gradient(90deg, #2a000a, #7b001f, #2a000a);
+  border-bottom: 1px solid rgba(255,255,255,.12);
+}
+
+/* Cuando abre */
+.curtainOverlay.open .curtain.left{ transform: translateX(-110%); }
+.curtainOverlay.open .curtain.right{ transform: translateX(110%); }
+
+/* Se oculta al terminar */
+.curtainOverlay.done{
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 250ms ease;
+}
+
+/* ====== Mini “función” ====== */
+.reveal{
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(6px);
+  overflow: hidden;
+  transition: 350ms ease;
+}
+.reveal.show{
+  max-height: 240px;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Para que btnWide funcione también como <button> */
+button.btnWide{
+  width: 100%;
+  border: none;
+  cursor: pointer;
+}

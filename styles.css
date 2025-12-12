@@ -30,8 +30,16 @@ body{
   gap: 14px;
 }
 
-.top h1{ margin: 10px 0 4px; font-size: 26px; line-height: 1.15; }
-.sub{ margin: 0; color: var(--muted); }
+.top h1{
+  margin: 10px 0 4px;
+  font-size: 26px;
+  line-height: 1.15;
+}
+
+.sub{
+  margin: 0;
+  color: var(--muted);
+}
 
 .card{
   background: var(--card);
@@ -41,8 +49,48 @@ body{
   backdrop-filter: blur(10px);
 }
 
-.card h2{ margin: 0 0 8px; font-size: 18px; }
+.card h2{
+  margin: 0 0 8px;
+  font-size: 18px;
+}
 
+/* ====== Menú (3 opciones) ====== */
+.menu{
+  display: grid;
+  gap: 10px;
+}
+
+.tile{
+  display: block;
+  text-decoration: none;
+  color: var(--text);
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 18px;
+  padding: 16px;
+  min-height: 88px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tile:active{ transform: scale(.99); }
+
+.tileTitle{
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.tileDesc{
+  color: var(--muted);
+}
+
+.tile.primary{
+  background: rgba(255,255,255,.12);
+  border-color: rgba(255,255,255,.18);
+}
+
+/* ====== Botones ====== */
 .grid{
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -65,6 +113,23 @@ body{
 
 .btn:active{ transform: scale(.99); }
 
+.btnWide{
+  display: grid;
+  place-items: center;
+  text-decoration: none;
+  color: var(--text);
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 16px;
+  padding: 14px 10px;
+  min-height: 48px;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btnWide:active{ transform: scale(.99); }
+
+/* ====== Footer ====== */
 .footer{
   margin-top: auto;
   text-align: center;

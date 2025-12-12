@@ -5,7 +5,40 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0f17" />
   <title>Mini dosis de cariño</title>
-  <link rel="stylesheet" href="./styles.css?v=4" />
+  <link rel="stylesheet" href="./styles.css?v=5" />
+
+  <style>
+    /* Foto con transición (rápida y bonita) */
+    .photoStage{
+      margin-top: 12px;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      transform: translateY(6px) scale(.985);
+      opacity: 0;
+      transition: 260ms ease;
+      will-change: transform, opacity;
+    }
+
+    .photoStage.show{
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+
+    .photoStage img{
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .photoHint{
+      color: rgba(255,255,255,.65);
+      font-size: 12px;
+      margin: 8px 0 0;
+      text-align: center;
+    }
+  </style>
 </head>
 
 <body>
@@ -38,6 +71,17 @@
           <span id="msgText">...</span>
         </p>
 
+        <!-- Foto (aparece con transición) -->
+        <div class="photoStage" id="photoStage">
+          <img
+            id="photoImg"
+            src="./assets/nosotros.jpg"
+            alt="Una foto bonita de nosotros"
+            loading="eager"
+          />
+        </div>
+        <p class="photoHint" id="photoHint">🫶 Un recordatorio visual de nosotros</p>
+
         <button class="btnWide" id="anotherBtn" type="button" style="margin-top:10px;">
           🔄 Otra frase
         </button>
@@ -54,14 +98,11 @@
   <script>
     // ====== Mensajes ======
     const MESSAGES = [
-      // Frases principales
       "Hoy no tienes que ser fuerte, solo honesta contigo misma.",
       "Aunque el mundo esté pesado, tú sigues siendo de mis cosas favoritas.",
       "No importa cómo te sientas hoy, sigues siendo suficiente.",
       "Si nadie te lo ha dicho hoy: lo estás haciendo mejor de lo que crees.",
       "Tu versión cansada también merece amor.",
-
-      // Mini recordatorios
       "Respira hondo 3 veces, yo respiro contigo desde acá.",
       "Tienes permiso total de estar cansada y seguir siendo increíble.",
       "Aunque el día esté feo, tú no eres el día: tú sigues siendo tú.",
@@ -99,7 +140,6 @@
       let idx = parseInt(localStorage.getItem(INDEX_KEY) || "0", 10);
       if (Number.isNaN(idx) || idx < 0) idx = 0;
 
-      // Si ya se acabaron, reshuffle y reinicia
       if (idx >= order.length) {
         const newOrder = shuffle([...Array(MESSAGES.length).keys()]);
         localStorage.setItem(ORDER_KEY, JSON.stringify(newOrder));
@@ -128,7 +168,6 @@
       const overlay = document.getElementById("curtainOverlay");
       if (!overlay) return;
 
-      // En móvil a veces “reduce motion”; igual mostramos, solo más rápido
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
       overlay.classList.remove("open", "done");
@@ -143,6 +182,38 @@
       setTimeout(() => overlay.remove(), removeDelay);
     }
 
+    // ====== Foto con aparición suave ======
+    function showPhotoWithTransition() {
+      const stage = document.getElementById("photoStage");
+      const img = document.getElementById("photoImg");
+      const hint = document.getElementById("photoHint");
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      if (!stage || !img) return;
+
+      // Si no existe la imagen (mal nombre/ruta), ocultamos el bloque para que no se vea feo
+      img.addEventListener("error", () => {
+        stage.style.display = "none";
+        if (hint) hint.style.display = "none";
+      }, { once: true });
+
+      const revealNow = () => {
+        if (reduce) {
+          stage.classList.add("show");
+          return;
+        }
+        // pequeño delay para que se sienta “mágico” pero rápido
+        setTimeout(() => stage.classList.add("show"), 180);
+      };
+
+      // Si ya cargó (cache), muestra de una
+      if (img.complete && img.naturalWidth > 0) {
+        revealNow();
+      } else {
+        img.addEventListener("load", revealNow, { once: true });
+      }
+    }
+
     // ====== UI ======
     function wireUI() {
       const magicBtn = document.getElementById("magicBtn");
@@ -155,6 +226,7 @@
 
       magicBtn?.addEventListener("click", () => {
         reveal?.classList.add("show");
+        showPhotoWithTransition();
       });
 
       anotherBtn?.addEventListener("click", () => {
@@ -169,7 +241,6 @@
       wireUI();
     });
 
-    // iOS a veces “recicla” páginas (bfcache)
     window.addEventListener("pageshow", (e) => {
       if (e.persisted) runCurtains();
     });

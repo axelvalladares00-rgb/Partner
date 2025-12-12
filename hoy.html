@@ -5,36 +5,58 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0f17" />
   <title>Mini dosis de cariño</title>
-  <link rel="stylesheet" href="./styles.css?v=7" />
+  <link rel="stylesheet" href="./styles.css?v=8" />
 
   <style>
-    /* IMPORTANTE: evita que el reveal recorte la foto (en móvil se nota más) */
+    /* Evita que el reveal recorte contenido (foto) */
     .reveal.show{
-      max-height: 2000px !important;
+      max-height: 2400px !important;
     }
 
-    /* Foto con transición (rápida y bonita) */
+    /* Foto con transición */
     .photoStage{
       margin-top: 12px;
       border-radius: 18px;
       overflow: hidden;
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(255,255,255,.06);
+
       transform: translateY(6px) scale(.985);
       opacity: 0;
-      transition: 260ms ease;
+      transition: 220ms ease;
       will-change: transform, opacity;
     }
-
     .photoStage.show{
       transform: translateY(0) scale(1);
       opacity: 1;
+    }
+
+    .photoLoading{
+      padding: 12px;
+      text-align: center;
+      color: rgba(255,255,255,.75);
+      font-size: 13px;
+      line-height: 1.35;
     }
 
     .photoStage img{
       display: block;
       width: 100%;
       height: auto;
+
+      opacity: 0;
+      transform: scale(1.02);
+      transition: 260ms ease;
+      will-change: opacity, transform;
+    }
+
+    .photoStage.imgLoaded img{
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .photoStage.imgLoaded .photoLoading{
+      display: none;
     }
 
     .photoHint{
@@ -55,7 +77,6 @@
       line-height: 1.35;
       display: none;
     }
-
     .photoFallback.show{
       display: block;
     }
@@ -94,18 +115,21 @@
 
         <!-- Foto -->
         <div class="photoStage" id="photoStage">
+          <div class="photoLoading" id="photoLoading">📸 Cargando nuestra foto…</div>
           <img
             id="photoImg"
-            src="/assets/nosotros.jpg?v=7"
             alt="Una foto bonita de nosotros"
             loading="eager"
+            decoding="async"
           />
         </div>
 
         <div class="photoFallback" id="photoFallback">
-          🫶 Aún no encontré la foto.<br/>
-          Asegúrate que la foto real exista en el repo como:<br/>
-          <b>assets/nosotros.jpg</b> (minúsculas) y que NO sea un archivo vacío creado con “New File”.
+          🫶 No pude cargar la foto.<br/><br/>
+          Esto pasa si el archivo NO es realmente JPG/PNG por dentro (por ejemplo era HEIC/WEBP y solo se renombró),
+          o si el nombre/extensión no coincide.<br/><br/>
+          Solución rápida: vuelve a guardar la imagen como JPG desde tu compu/galería (exportar/guardar como),
+          reemplaza el archivo y vuelve a hacer git push.
         </div>
 
         <p class="photoHint" id="photoHint">🫶 Un recordatorio visual de nosotros</p>
@@ -116,7 +140,7 @@
       </div>
     </section>
 
-    <a class="btnWide" href="/index.html">← Volver</a>
+    <a class="btnWide" href="./index.html">← Volver</a>
 
     <footer class="footer">
       <small>Hecho con cariño.</small>
@@ -207,36 +231,53 @@
       setTimeout(() => overlay.remove(), removeDelay);
     }
 
-    function showPhotoWithTransition() {
+    function loadPhotoCandidates() {
       const stage = document.getElementById("photoStage");
       const img = document.getElementById("photoImg");
-      const hint = document.getElementById("photoHint");
       const fallback = document.getElementById("photoFallback");
       const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
       if (!stage || !img) return;
 
-      const showStage = () => {
-        if (reduce) {
-          stage.classList.add("show");
+      // Muestra el contenedor (con animación rápida)
+      stage.classList.add("show");
+
+      const v = "8"; // cache bust
+      const candidates = [
+        `./assets/nosotros.jpg?v=${v}`,
+        `./assets/Nosotros.jpg?v=${v}`,
+        `./assets/nosotros.jpeg?v=${v}`,
+        `./assets/Nosotros.jpeg?v=${v}`,
+        `./assets/nosotros.png?v=${v}`,
+        `./assets/Nosotros.png?v=${v}`,
+      ];
+
+      let i = 0;
+      let loaded = false;
+
+      const tryNext = () => {
+        if (i >= candidates.length) {
+          if (!loaded && fallback) fallback.classList.add("show");
           return;
         }
-        setTimeout(() => stage.classList.add("show"), 180);
+
+        const src = candidates[i++];
+        img.onload = () => {
+          loaded = true;
+          stage.classList.add("imgLoaded");
+          if (fallback) fallback.classList.remove("show");
+          // si reduce motion, igual lo mostramos (sin delay extra)
+          if (reduce) stage.classList.add("imgLoaded");
+        };
+
+        img.onerror = () => {
+          tryNext();
+        };
+
+        img.src = src;
       };
 
-      const showFallback = () => {
-        stage.style.display = "none";
-        if (hint) hint.style.display = "none";
-        if (fallback) fallback.classList.add("show");
-      };
-
-      img.addEventListener("error", showFallback, { once: true });
-
-      if (img.complete && img.naturalWidth > 0) {
-        showStage();
-      } else {
-        img.addEventListener("load", showStage, { once: true });
-      }
+      tryNext();
     }
 
     function wireUI() {
@@ -250,7 +291,7 @@
 
       magicBtn?.addEventListener("click", () => {
         reveal?.classList.add("show");
-        showPhotoWithTransition();
+        loadPhotoCandidates();
       });
 
       anotherBtn?.addEventListener("click", () => {

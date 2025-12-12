@@ -136,3 +136,11 @@ body{
   color: var(--muted);
   padding: 8px 0 2px;
 }
+/* Bloquea el scroll SOLO en el home */
+body.noScroll{
+  overflow: hidden;
+}
+
+body.noScroll .phone{
+  overflow: hidden;
+}

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0f17" />
+  <title>La magia</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+
+<body>
+  <!-- Cortinas -->
+  <div class="curtainOverlay" id="curtainOverlay" aria-hidden="true">
+    <div class="curtainWrap">
+      <div class="valance"></div>
+      <div class="curtain left"></div>
+      <div class="curtain right"></div>
+    </div>
+  </div>
+
+  <main class="phone" role="main">
+    <header class="top">
+      <h1>🪄 Bienvenida a la función</h1>
+      <p class="sub">Cortinas arriba…</p>
+    </header>
+
+    <section class="card">
+      <h2>La magia</h2>
+      <p>Presiona el botón para iniciar la función ✨</p>
+
+      <button class="btnWide" id="magicBtn" type="button">✨ Iniciar la función</button>
+
+      <div class="reveal" id="reveal">
+        <p style="margin-top:12px;">
+          🎭 Ta-da! Esto es el inicio. Aquí iremos construyendo cosas bonitas poco a poco.
+        </p>
+      </div>
+    </section>
+
+    <a class="btnWide" href="/index.html">← Volver</a>
+
+    <footer class="footer">
+      <small>Hecho con cariño.</small>
+    </footer>
+  </main>
+
+  <script>
+    window.addEventListener("DOMContentLoaded", () => {
+      const overlay = document.getElementById("curtainOverlay");
+      const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      if (!overlay) return;
+
+      if (reduce) {
+        overlay.remove();
+        return;
+      }
+
+      setTimeout(() => overlay.classList.add("open"), 60);
+      setTimeout(() => overlay.classList.add("done"), 1350);
+      setTimeout(() => overlay.remove(), 1700);
+
+      const btn = document.getElementById("magicBtn");
+      const reveal = document.getElementById("reveal");
+      btn?.addEventListener("click", () => reveal?.classList.toggle("show"));
+    });
+  </script>
+</body>
+</html>

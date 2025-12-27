@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0f17" />
   <title>show1 sorpresa</title>
-  <link rel="stylesheet" href="./styles.css?v=11" />
+  <link rel="stylesheet" href="./styles.css?v=12" />
 
   <style>
     .videoFrame{
@@ -24,23 +24,27 @@
       object-fit: contain;
     }
 
-    /* Máscara inicial para que no se vea “flash” del segundo 0 */
+    /* Máscara inicial (para que nunca sea “pantalla negra” sin explicación) */
     .startMask{
       position:absolute;
       inset:0;
       background:#000;
       opacity: 1;
       transition: opacity 220ms ease;
-      pointer-events:none;
       display:grid;
       place-items:center;
       padding: 16px;
       text-align:center;
-      color: rgba(255,255,255,.85);
+      color: rgba(255,255,255,.88);
       font-size: 13px;
       line-height: 1.35;
     }
-    .startMask.off{ opacity: 0; }
+    .startMask.off{ opacity: 0; pointer-events:none; }
+    .startMask .small{
+      margin-top: 8px;
+      color: rgba(255,255,255,.68);
+      font-size: 12px;
+    }
 
     /* Pantalla blanca */
     .whiteout{
@@ -108,7 +112,7 @@
 
     <section class="card">
       <h2>Escena</h2>
-      <p style="margin:0 0 10px;">Asegúrate que exista: <b>assets/show1.mp4</b></p>
+      <p style="margin:0 0 10px;">Debe existir: <b>assets/show1.mp4</b></p>
 
       <div class="videoFrame">
         <video
@@ -119,8 +123,10 @@
           preload="auto"
         ></video>
 
-        <!-- Solo se ve si el autoplay falla (último recurso) -->
-        <div class="startMask" id="startMask" aria-hidden="true"></div>
+        <div class="startMask" id="startMask">
+          ⏳ Cargando el show…
+          <div class="small">Si no inicia, toca la pantalla una vez para activar el video.</div>
+        </div>
       </div>
 
       <div class="msgBox" id="msgBox" aria-live="polite">
@@ -151,6 +157,7 @@
 
     let triggered = false;
     let metadataReady = false;
+    let hasActuallyPlayed = false; // evita “ended raro”/secuencias sin play real
 
     // ====== Canvas setup ======
     const ctx = canvas.getContext("2d");
@@ -249,27 +256,26 @@
       stopFireworks();
       whiteout.classList.remove("on");
       triggered = false;
+      hasActuallyPlayed = false;
+
       if(startMask){
         startMask.classList.remove("off");
-        startMask.textContent = "";
+        startMask.innerHTML = `⏳ Cargando el show…<div class="small">Si no inicia, toca la pantalla una vez para activar el video.</div>`;
       }
-    }
-
-    function seekToStart(){
-      try{ scene.currentTime = START_AT; }catch(_){}
     }
 
     async function ensureMetadata(){
       if(metadataReady) return;
       await new Promise((resolve) => {
-        const onMeta = () => { resolve(); };
+        const onMeta = () => resolve();
         scene.addEventListener("loadedmetadata", onMeta, { once: true });
       });
       metadataReady = true;
     }
 
-    // Espera a que el seek “pegue” (mejor en móvil)
     async function seekReliable(){
+      await ensureMetadata();
+
       return await new Promise((resolve) => {
         let done = false;
         const finish = () => { if(done) return; done = true; resolve(); };
@@ -278,22 +284,20 @@
           scene.removeEventListener("seeked", onSeeked);
           finish();
         };
-
         scene.addEventListener("seeked", onSeeked, { once: true });
 
         try{
-          scene.currentTime = START_AT;
+          scene.currentTime = Math.min(START_AT, Math.max(0, (scene.duration || START_AT) - 0.2));
         }catch(_){
           scene.removeEventListener("seeked", onSeeked);
           finish();
           return;
         }
 
-        // fallback por si el navegador no dispara seeked
         setTimeout(() => {
           scene.removeEventListener("seeked", onSeeked);
           finish();
-        }, 220);
+        }, 260);
       });
     }
 
@@ -301,7 +305,7 @@
       if(triggered) return;
       triggered = true;
 
-      try{ scene.pause(); } catch(_){}
+      try{ scene.pause(); }catch(_){}
 
       whiteout.classList.add("on");
       await new Promise(r => setTimeout(r, WHITEOUT_MS));
@@ -310,67 +314,62 @@
       startFireworks();
     }
 
-    // ====== START (sin botones) ======
-    async function startShow(){
+    async function tryAutoplay(){
       resetUI();
 
-      await ensureMetadata();
-
-      // Para que sea fluido y permitido en móvil:
-      // autoplay casi siempre requiere muted.
+      // claves para móvil: que el “muted” esté también como atributo
       scene.muted = true;
+      scene.setAttribute("muted", "");
+      scene.setAttribute("playsinline", "");
+      scene.setAttribute("webkit-playsinline", "");
 
-      // Seek al segundo 4 ANTES de reproducir
       await seekReliable();
 
-      // Intento play
       try{
         await scene.play();
-
-        // Cuando ya está reproduciendo, quitamos máscara
-        scene.addEventListener("playing", () => {
-          if(startMask) startMask.classList.add("off");
-        }, { once: true });
-
-        // Si tarda el "playing", quitamos máscara igual (rápido)
-        setTimeout(() => startMask && startMask.classList.add("off"), 350);
-
+        // si empezó, ocultamos máscara
+        // (playing es más confiable)
       }catch(e){
-        // Último recurso: algunos móviles MUY estrictos.
-        // No ponemos botones, solo un texto y escuchamos un toque en cualquier parte.
-        if(startMask){
-          startMask.textContent = "Si tu teléfono bloqueó el autoplay, toca la pantalla una vez para iniciar ✨";
-        }
-
-        const resume = async () => {
-          document.removeEventListener("pointerdown", resume);
-          try{
-            await scene.play();
-            if(startMask) startMask.classList.add("off");
-          }catch(_){}
-        };
-
-        document.addEventListener("pointerdown", resume, { once: true });
+        // queda el texto en la máscara para que el usuario toque
+        console.log("Autoplay bloqueado:", e);
       }
     }
 
+    async function playOnGesture(){
+      try{
+        await scene.play();
+      }catch(_){}
+    }
+
     // ====== EVENTS ======
-    scene?.addEventListener("ended", () => {
+    scene.addEventListener("playing", () => {
+      hasActuallyPlayed = true;
+      startMask?.classList.add("off");
+    }, { once: true });
+
+    scene.addEventListener("ended", () => {
+      // solo corre si de verdad estuvo reproduciéndose
+      if(!hasActuallyPlayed) return;
       whiteoutSequence();
     });
 
-    scene?.addEventListener("error", () => {
+    scene.addEventListener("error", () => {
       if(startMask){
-        startMask.textContent = "No se pudo cargar el video. Revisa: assets/show1.mp4";
+        startMask.innerHTML = `❌ No se pudo cargar el video.<div class="small">Revisa que exista EXACTO: assets/show1.mp4 (mismo nombre/mayúsculas) y que el MP4 sea compatible.</div>`;
       }
     });
 
+    // Si el autoplay fue bloqueado, un toque en cualquier parte lo inicia
+    document.addEventListener("pointerdown", () => {
+      playOnGesture();
+    }, { passive: true });
+
     window.addEventListener("DOMContentLoaded", () => {
-      startShow();
+      tryAutoplay();
     });
 
     window.addEventListener("pageshow", (e) => {
-      if (e.persisted) startShow();
+      if (e.persisted) tryAutoplay();
     });
   </script>
 </body>

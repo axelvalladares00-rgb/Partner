@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0f17" />
   <title>show1 sorpresa</title>
-  <link rel="stylesheet" href="./styles.css?v=13" />
+  <link rel="stylesheet" href="./styles.css?v=14" />
 
   <style>
     /* ====== Escenario centrado (16:9) ====== */
@@ -25,6 +25,17 @@
       background: rgba(0,0,0,.35);
       position: relative;
       isolation: isolate;
+      margin-inline: auto;
+
+      transition: opacity 260ms ease, transform 260ms ease;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .stage.fadeOut{
+      opacity: 0;
+      transform: translateY(8px) scale(.99);
+      pointer-events: none;
     }
 
     .stage video{
@@ -35,6 +46,9 @@
       object-fit: contain;
       background:#000;
       display:block;
+
+      /* 🔥 Forzamos centrado (y un pelín a la IZQ por tu iPhone) */
+      object-position: 48% 50%;
     }
 
     /* Overlay Play */
@@ -130,7 +144,7 @@
 
     <section class="card">
       <div class="centerArea">
-        <div class="stage">
+        <div class="stage" id="stage">
           <video
             id="scene"
             src="./assets/show1.mp4"
@@ -159,6 +173,7 @@
     const FIREWORKS_MS = 3200;   // fuegos ~3.2s
     const END_GUARD    = 0.18;   // margen por si "ended" falla
 
+    const stage = document.getElementById("stage");
     const scene = document.getElementById("scene");
     const playOverlay = document.getElementById("playOverlay");
     const playBig = document.getElementById("playBig");
@@ -237,6 +252,8 @@
         requestAnimationFrame(fxLoop);
       }else{
         stopFireworks();
+        // 👇 al terminar fuegos: quitamos el escenario y dejamos el fondo
+        fadeOutStageToBackground();
       }
     }
 
@@ -254,14 +271,30 @@
       particles.length = 0;
     }
 
+    function fadeOutStageToBackground(){
+      if(!stage) return;
+      stage.classList.add("fadeOut");
+      setTimeout(() => {
+        stage.style.display = "none";
+      }, 280);
+    }
+
     function resetUI(){
       stopFireworks();
       whiteout.classList.remove("on");
       finaleStarted = false;
+
       if(endWatchTimer){
         clearInterval(endWatchTimer);
         endWatchTimer = null;
       }
+
+      // si vuelves a entrar/recargar
+      if(stage){
+        stage.style.display = "";
+        stage.classList.remove("fadeOut");
+      }
+
       playOverlay.classList.remove("off");
     }
 
@@ -311,17 +344,15 @@
     }
 
     // ====== IMPORTANTÍSIMO EN TELÉFONO ======
-    // NO usamos await antes de play() para no perder el “gesto” del click.
     function startShowFromClick(){
       resetUI();
 
-      // arranca desde 0 (tú ya lo editaste)
+      // desde 0
       try{ scene.currentTime = 0; }catch(_){}
 
-      // esto ayuda a que siempre deje reproducir en móviles
+      // ayuda para iPhone
       scene.muted = true;
 
-      // ocultamos overlay cuando REALMENTE empiece a reproducir
       const onPlaying = () => {
         playOverlay.classList.add("off");
         startEndWatcher();
@@ -329,8 +360,6 @@
       scene.addEventListener("playing", onPlaying, { once: true });
 
       const p = scene.play();
-
-      // si falla, dejamos el overlay (para que pueda intentar de nuevo)
       if(p && typeof p.catch === "function"){
         p.catch(() => {
           scene.removeEventListener("playing", onPlaying);
@@ -340,13 +369,6 @@
 
     // ====== EVENTS ======
     scene.addEventListener("ended", () => startFinale());
-
-    scene.addEventListener("error", () => {
-      // sin texto extra (solo no se reproduce)
-      // si quieres, aquí podrías cambiar el texto del botón, pero lo dejé limpio.
-    });
-
-    // Click del botón
     playBig.addEventListener("click", startShowFromClick);
 
     // iOS bfcache

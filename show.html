@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0f17" />
   <title>show1 sorpresa</title>
-  <link rel="stylesheet" href="./styles.css?v=12" />
+  <link rel="stylesheet" href="./styles.css?v=13" />
 
   <style>
     /* ====== Escenario 16:9 centrado ====== */
@@ -133,7 +133,6 @@
     }
     .btnWide:active{ transform: scale(.99); }
 
-    /* Para que se vea bien sin “cortar” contenido */
     .card{ overflow: visible; }
   </style>
 </head>
@@ -162,7 +161,7 @@
           <div class="playOverlay" id="playOverlay">
             <button class="playBig" id="playBig" type="button">▶️ Dale play para la magia</button>
             <p class="hintSmall">
-              (El video solo inicia cuando tú tocas play. Al terminar: flash blanco + fuegos 🎆)
+              (Al terminar: blanco 2s + fuegos 🎆)
             </p>
           </div>
         </div>
@@ -184,9 +183,10 @@
 
   <script>
     // ====== CONFIG ======
-    const START_AT     = 4;     // arranca desde el segundo 4
-    const WHITEOUT_MS  = 2000;  // blanco 2s
-    const FIREWORKS_MS = 3200;  // fuegos ~3.2s
+    const START_AT     = 4;      // arranca desde el segundo 4
+    const WHITEOUT_MS  = 2000;   // blanco 2s (lo que pediste)
+    const FIREWORKS_MS = 3200;   // fuegos ~3.2s
+    const END_GUARD    = 0.12;   // fallback: considera "final" si faltan <0.12s
 
     const scene = document.getElementById("scene");
     const playOverlay = document.getElementById("playOverlay");
@@ -195,8 +195,8 @@
     const canvas = document.getElementById("fxCanvas");
     const msgBox = document.getElementById("msgBox");
 
-    let triggered = false;
     let metadataReady = false;
+    let finaleStarted = false;
 
     // ====== Canvas setup ======
     const ctx = canvas.getContext("2d");
@@ -293,7 +293,7 @@
       msgBox.classList.remove("show");
       stopFireworks();
       whiteout.classList.remove("on");
-      triggered = false;
+      finaleStarted = false;
       playOverlay?.classList.remove("off");
     }
 
@@ -334,53 +334,67 @@
       });
     }
 
-    async function whiteoutSequence(){
-      if(triggered) return;
-      triggered = true;
+    // ====== FINAL: blanco 2s -> fuegos ======
+    async function startFinale(){
+      if(finaleStarted) return;
+      finaleStarted = true;
 
       try{ scene.pause(); }catch(_){}
 
+      // Enciende blanco
       whiteout.classList.add("on");
-      await new Promise(r => setTimeout(r, WHITEOUT_MS));
-      whiteout.classList.remove("on");
 
+      // Fuerza 2 frames para asegurar que el blanco SE PINTE antes de esperar
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+      // Mantén el blanco 2s exactos
+      await new Promise(r => setTimeout(r, WHITEOUT_MS));
+
+      // Apaga blanco y enciende fuegos
+      whiteout.classList.remove("on");
       startFireworks();
     }
 
     async function startShowByClick(){
       resetUI();
-
       await seekReliable();
 
-      // Con click del usuario, ya debería reproducir sin problema
       try{
+        scene.loop = false;
         await scene.play();
         playOverlay?.classList.add("off");
       }catch(e){
-        // Si algo raro pasa, dejamos el overlay visible
         console.log("No se pudo reproducir:", e);
       }
     }
 
-    // Al terminar el video -> flash + fuegos
+    // ====== EVENTS ======
+    // 1) Lo normal: ended
     scene.addEventListener("ended", () => {
-      whiteoutSequence();
+      startFinale();
     });
 
-    scene.addEventListener("error", () => {
-      // Si falla el video, dejamos el overlay y cambiamos el texto
-      if(playOverlay){
-        playOverlay.classList.remove("off");
-        playOverlay.querySelector(".hintSmall").textContent =
-          "No se pudo cargar el video. Revisa que exista: assets/show1.mp4 (nombre exacto).";
+    // 2) Fallback: si algunos teléfonos no disparan ended, detecta el final por tiempo
+    scene.addEventListener("timeupdate", () => {
+      if(finaleStarted) return;
+      if(!scene.duration || !Number.isFinite(scene.duration)) return;
+      if(scene.currentTime >= scene.duration - END_GUARD){
+        startFinale();
       }
     });
 
-    playBig?.addEventListener("click", () => {
+    scene.addEventListener("error", () => {
+      if(playOverlay){
+        playOverlay.classList.remove("off");
+        const hint = playOverlay.querySelector(".hintSmall");
+        if(hint) hint.textContent = "No se pudo cargar el video. Revisa: assets/show1.mp4 (nombre exacto).";
+      }
+    });
+
+    playBig.addEventListener("click", () => {
       startShowByClick();
     });
 
-    // Si vuelves con back/forward en iOS, resetea
     window.addEventListener("pageshow", (e) => {
       if (e.persisted) resetUI();
     });

@@ -5,14 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0f17" />
   <title>show1 sorpresa</title>
-  <link rel="stylesheet" href="./styles.css?v=12" />
+  <link rel="stylesheet" href="./styles.css?v=13" />
 
   <style>
     /* ====== Escenario centrado (16:9) ====== */
     .centerArea{
-      display:grid;
-      place-items:center;
-      min-height: 62vh;
+      display: grid;
+      place-items: center;
+      min-height: calc(100svh - 210px);
+      padding: 10px 0;
     }
 
     .stage{
@@ -36,7 +37,7 @@
       display:block;
     }
 
-    /* Botón grande centrado */
+    /* Overlay Play */
     .playOverlay{
       position:absolute;
       inset:0;
@@ -55,21 +56,22 @@
     }
 
     .playBig{
-      width: min(92%, 420px);
-      min-height: 56px;
+      width: min(86%, 320px);
+      min-height: 52px;
       border-radius: 18px;
       border: 1px solid rgba(255,255,255,.18);
       background: rgba(255,255,255,.10);
       color: rgba(255,255,255,.92);
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 650;
       letter-spacing: .2px;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
+      padding: 10px 14px;
     }
     .playBig:active{ transform: scale(.99); }
 
-    /* Pantalla blanca (muy arriba de todo) */
+    /* Pantalla blanca (arriba de todo) */
     .whiteout{
       position: fixed;
       inset: 0;
@@ -97,7 +99,7 @@
     }
     .fxCanvas.on{ opacity: 1; }
 
-    /* Usa tu estilo de botón existente, pero por si acaso */
+    /* Por si tu styles.css no lo trae */
     .btnWide{
       width:100%;
       display:grid;
@@ -138,7 +140,7 @@
           ></video>
 
           <div class="playOverlay" id="playOverlay">
-            <button class="playBig" id="playBig" type="button">▶️ Dale play para la magia</button>
+            <button class="playBig" id="playBig" type="button">▶️ Dale play por favor</button>
           </div>
         </div>
       </div>
@@ -153,10 +155,9 @@
 
   <script>
     // ====== CONFIG ======
-    const START_AT     = 4;       // arranca desde el segundo 4
-    const WHITEOUT_MS  = 2000;    // blanco 2s
-    const FIREWORKS_MS = 3200;    // fuegos ~3.2s
-    const END_GUARD    = 0.12;    // fallback por tiempo
+    const WHITEOUT_MS  = 2000;   // blanco 2s
+    const FIREWORKS_MS = 3200;   // fuegos ~3.2s
+    const END_GUARD    = 0.18;   // margen por si "ended" falla
 
     const scene = document.getElementById("scene");
     const playOverlay = document.getElementById("playOverlay");
@@ -164,7 +165,6 @@
     const whiteout = document.getElementById("whiteout");
     const canvas = document.getElementById("fxCanvas");
 
-    let metadataReady = false;
     let finaleStarted = false;
     let endWatchTimer = null;
 
@@ -186,7 +186,7 @@
     function rand(min, max){ return Math.random() * (max - min) + min; }
 
     function burst(x, y){
-      const count = 48;
+      const count = 52;
       for(let i=0;i<count;i++){
         const a = rand(0, Math.PI * 2);
         const sp = rand(2.2, 6.2);
@@ -194,8 +194,8 @@
           x, y,
           vx: Math.cos(a)*sp,
           vy: Math.sin(a)*sp,
-          life: rand(38, 62),
-          r: rand(1.2, 2.5),
+          life: rand(38, 64),
+          r: rand(1.2, 2.6),
           c: `hsl(${Math.floor(rand(0, 360))} 90% 60%)`
         });
       }
@@ -222,7 +222,7 @@
         p.y += p.vy;
         p.life -= 1;
 
-        const alpha = Math.max(0, Math.min(1, p.life/60));
+        const alpha = Math.max(0, Math.min(1, p.life/64));
         ctx.globalAlpha = alpha;
         ctx.fillStyle = p.c;
         ctx.beginPath();
@@ -254,35 +254,6 @@
       particles.length = 0;
     }
 
-    // ====== Helpers ======
-    async function ensureMetadata(){
-      if(metadataReady) return;
-      await new Promise((resolve) => {
-        scene.addEventListener("loadedmetadata", resolve, { once: true });
-      });
-      metadataReady = true;
-    }
-
-    async function seekReliable(){
-      await ensureMetadata();
-      await new Promise((resolve) => {
-        let done = false;
-        const finish = () => { if(done) return; done = true; resolve(); };
-
-        scene.addEventListener("seeked", finish, { once: true });
-
-        try{
-          const dur = scene.duration || (START_AT + 1);
-          scene.currentTime = Math.min(START_AT, Math.max(0, dur - 0.2));
-        }catch(_){
-          finish();
-          return;
-        }
-
-        setTimeout(finish, 280);
-      });
-    }
-
     function resetUI(){
       stopFireworks();
       whiteout.classList.remove("on");
@@ -291,6 +262,7 @@
         clearInterval(endWatchTimer);
         endWatchTimer = null;
       }
+      playOverlay.classList.remove("off");
     }
 
     // ====== Final: blanco 2s -> fuegos ======
@@ -307,7 +279,7 @@
 
       whiteout.classList.add("on");
 
-      // Asegura repintado en móvil (2 frames)
+      // asegura repintado en móvil
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
       await new Promise(r => setTimeout(r, WHITEOUT_MS));
@@ -317,20 +289,18 @@
       startFireworks();
     }
 
-    // Watcher extra (por si "ended" falla en ciertos teléfonos)
+    // Fallback por si "ended" no llega
     function startEndWatcher(){
       if(endWatchTimer) clearInterval(endWatchTimer);
 
       endWatchTimer = setInterval(() => {
         if(finaleStarted) return;
 
-        // ended directo
-        if(scene.ended) {
+        if(scene.ended){
           startFinale();
           return;
         }
 
-        // por tiempo (cuando duration existe)
         const dur = scene.duration;
         if(Number.isFinite(dur) && dur > 0){
           if(scene.currentTime >= dur - END_GUARD){
@@ -340,40 +310,46 @@
       }, 120);
     }
 
-    async function startShow(){
+    // ====== IMPORTANTÍSIMO EN TELÉFONO ======
+    // NO usamos await antes de play() para no perder el “gesto” del click.
+    function startShowFromClick(){
       resetUI();
 
-      await seekReliable();
+      // arranca desde 0 (tú ya lo editaste)
+      try{ scene.currentTime = 0; }catch(_){}
 
-      try{
-        await scene.play();
+      // esto ayuda a que siempre deje reproducir en móviles
+      scene.muted = true;
+
+      // ocultamos overlay cuando REALMENTE empiece a reproducir
+      const onPlaying = () => {
         playOverlay.classList.add("off");
         startEndWatcher();
-      }catch(e){
-        // Si no reproduce, nos quedamos con el overlay visible (no mostramos texto extra)
-        console.log("No se pudo reproducir:", e);
+      };
+      scene.addEventListener("playing", onPlaying, { once: true });
+
+      const p = scene.play();
+
+      // si falla, dejamos el overlay (para que pueda intentar de nuevo)
+      if(p && typeof p.catch === "function"){
+        p.catch(() => {
+          scene.removeEventListener("playing", onPlaying);
+        });
       }
     }
 
-    // Eventos (los dejamos aunque exista watcher)
+    // ====== EVENTS ======
     scene.addEventListener("ended", () => startFinale());
 
-    // iPhone: si se fuera a fullscreen y vuelve, intenta finale
-    scene.addEventListener("webkitendfullscreen", () => {
-      // si ya estaba al final, dispara
-      const dur = scene.duration;
-      if(!finaleStarted && Number.isFinite(dur) && scene.currentTime >= dur - 0.25){
-        startFinale();
-      }
-    });
-
     scene.addEventListener("error", () => {
-      // Sin texto extra, solo log
-      console.log("No se pudo cargar el video: ./assets/show1.mp4");
+      // sin texto extra (solo no se reproduce)
+      // si quieres, aquí podrías cambiar el texto del botón, pero lo dejé limpio.
     });
 
-    playBig.addEventListener("click", () => startShow());
+    // Click del botón
+    playBig.addEventListener("click", startShowFromClick);
 
+    // iOS bfcache
     window.addEventListener("pageshow", (e) => {
       if (e.persisted) resetUI();
     });

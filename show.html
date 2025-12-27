@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0f17" />
   <title>FELIZ AÑO NUEVO</title>
-  <link rel="stylesheet" href="./styles.css?v=13" />
+  <link rel="stylesheet" href="./styles.css?v=14" />
 
   <style>
     /* ====== Escenario centrado (16:9) ====== */
@@ -26,7 +26,7 @@
       background: rgba(0,0,0,.35);
       position: relative;
       isolation: isolate;
-      margin: 0 auto; /* fuerza centrado */
+      margin: 0 auto;
     }
 
     .stage video{
@@ -93,7 +93,7 @@
       pointer-events: auto;
     }
 
-    /* Canvas fuegos (arriba de TODO) */
+    /* Canvas fuegos */
     .fxCanvas{
       position: fixed;
       inset: 0;
@@ -106,7 +106,7 @@
     }
     .fxCanvas.on{ opacity: 1; }
 
-    /* Botón volver (fallback por si tu CSS no lo tiene aquí) */
+    /* Botón volver */
     .btnWide{
       width:100%;
       display:grid;
@@ -128,7 +128,7 @@
     .afterLayer{
       position: fixed;
       inset: 0;
-      z-index: 2147483645; /* debajo de fuegos, arriba del contenido */
+      z-index: 2147483645;
       display: grid;
       place-items: center;
       padding: 18px;
@@ -182,7 +182,6 @@
       }
     }
 
-    /* “Desintegración” tipo polvo */
     .bigTitle.dustOut span.char{
       animation: dustOut 950ms ease forwards;
       animation-delay: var(--d, 0ms);
@@ -219,7 +218,6 @@
   <div class="whiteout" id="whiteout" aria-hidden="true"></div>
   <canvas class="fxCanvas" id="fxCanvas" aria-hidden="true"></canvas>
 
-  <!-- Texto final -->
   <div class="afterLayer" id="afterLayer" aria-hidden="true">
     <div class="afterCard">
       <h2 class="bigTitle" id="bigTitle"></h2>
@@ -259,16 +257,16 @@
 
   <script>
     // ====== CONFIG ======
-    const START_AT      = 0;       // ya lo editaste: inicia desde 0
-    const WHITEOUT_MS   = 2000;    // blanco 2s
-    const FIREWORKS_MS  = 4200;    // más show
-    const END_GUARD     = 0.18;    // fallback por tiempo
-    const BURST_EVERY   = 260;     // más frecuente
-    const BURST_COUNT   = 95;      // más partículas (extravagante)
+    const START_AT      = 0;
+    const WHITEOUT_MS   = 2000;
+    const FIREWORKS_MS  = 4200;
+    const END_GUARD     = 0.18;
+    const BURST_EVERY   = 260;
+    const BURST_COUNT   = 95;
 
-    // ====== Textos ======
+    // ====== Textos (sin contenido sexualizado) ======
     const TITLE_TEXT =
-      "FELIZ AÑO NUEVO MI NIÑA 💙CON UNA BONITA SONRISA y UN BONITO GLÚTEO JAJA ✨";
+      "FELIZ AÑO NUEVO MI NIÑA 💙 CON ESA SONRISA HERMOSA Y BONITO GLÚTEO JAJA ✨";
 
     const LONG_TEXT =
 `Feliz Año Nuevo, mi niña 🎆💫
@@ -288,9 +286,9 @@ Gracias por ser mi persona en este mundo tan raro, mi niña. Te quiero más de l
     const bigTitle = document.getElementById("bigTitle");
     const longMsg = document.getElementById("longMsg");
 
-    let metadataReady = false;
     let finaleStarted = false;
     let endWatchTimer = null;
+    let playedOnce = false;
 
     // ====== Canvas setup ======
     const ctx = canvas.getContext("2d");
@@ -305,7 +303,7 @@ Gracias por ser mi persona en este mundo tan raro, mi niña. Te quiero más de l
     window.addEventListener("resize", resizeCanvas);
     resizeCanvas();
 
-    // ====== Fireworks (extravagantes) ======
+    // ====== Fireworks ======
     const particles = [];
     function rand(min, max){ return Math.random() * (max - min) + min; }
 
@@ -325,11 +323,10 @@ Gracias por ser mi persona en este mundo tan raro, mi niña. Te quiero más de l
           life: rand(48, 86),
           r: rand(1.1, 2.8),
           c: `hsl(${Math.floor(hue)} 95% 62%)`,
-          tw: rand(0.25, 0.75) // brillo intermitente
+          tw: rand(0.25, 0.75)
         });
       }
 
-      // mini “sparkles”
       for(let k=0;k<14;k++){
         particles.push({
           x: x + rand(-20, 20),
@@ -353,7 +350,6 @@ Gracias por ser mi persona en este mundo tan raro, mi niña. Te quiero más de l
 
       ctx.clearRect(0,0,window.innerWidth, window.innerHeight);
 
-      // bursts más frecuentes + dobles
       if(ts - lastBurst > BURST_EVERY){
         lastBurst = ts;
         burst(rand(70, window.innerWidth-70), rand(110, window.innerHeight*0.55));
@@ -362,11 +358,8 @@ Gracias por ser mi persona en este mundo tan raro, mi niña. Te quiero más de l
         }
       }
 
-      // partículas + “trail” suave
       for(let i=particles.length-1; i>=0; i--){
         const p = particles[i];
-
-        // gravedad + drift
         p.vy += 0.055;
         p.vx *= 0.99;
         p.vy *= 0.99;
@@ -380,7 +373,6 @@ Gracias por ser mi persona en este mundo tan raro, mi niña. Te quiero más de l
         const alpha = Math.max(0, Math.min(1, p.life/90));
         const twinkle = 0.6 + 0.4 * Math.sin((90 - p.life) * p.tw);
 
-        // trail
         ctx.globalAlpha = alpha * 0.25;
         ctx.strokeStyle = p.c;
         ctx.lineWidth = Math.max(1, p.r);
@@ -389,7 +381,6 @@ Gracias por ser mi persona en este mundo tan raro, mi niña. Te quiero más de l
         ctx.lineTo(p.x, p.y);
         ctx.stroke();
 
-        // core
         ctx.globalAlpha = alpha * twinkle;
         ctx.fillStyle = p.c;
         ctx.beginPath();
@@ -437,11 +428,9 @@ Gracias por ser mi persona en este mundo tan raro, mi niña. Te quiero más de l
           s.className = "char";
           s.textContent = ch === " " ? "\u00A0" : ch;
 
-          // delays suaves
           const delay = (lineIdx * 140) + (i * 18);
           s.style.setProperty("--d", `${delay}ms`);
 
-          // random para “dust”
           s.style.setProperty("--tx", `${Math.floor(rand(-22, 26))}px`);
           s.style.setProperty("--ty", `${Math.floor(rand(-18, 14))}px`);
           s.style.setProperty("--rot", `${Math.floor(rand(-10, 12))}deg`);
@@ -457,56 +446,23 @@ Gracias por ser mi persona en este mundo tan raro, mi niña. Te quiero más de l
       afterLayer.classList.add("on");
       afterLayer.setAttribute("aria-hidden", "false");
 
-      // título
       buildTitleSpans(TITLE_TEXT);
       bigTitle.classList.remove("dustOut");
       bigTitle.classList.add("popIn");
 
-      // espera un poquito para que se lea
       await new Promise(r => setTimeout(r, 2200));
 
-      // “snap/dust”
       bigTitle.classList.remove("popIn");
       bigTitle.classList.add("dustOut");
 
-      // espera la animación de desintegración
       await new Promise(r => setTimeout(r, 1050));
 
-      // mensaje largo
       bigTitle.style.display = "none";
       longMsg.textContent = LONG_TEXT;
       longMsg.classList.add("on");
     }
 
     // ====== Helpers ======
-    async function ensureMetadata(){
-      if(metadataReady) return;
-      await new Promise((resolve) => {
-        scene.addEventListener("loadedmetadata", resolve, { once: true });
-      });
-      metadataReady = true;
-    }
-
-    async function seekReliable(){
-      await ensureMetadata();
-      await new Promise((resolve) => {
-        let done = false;
-        const finish = () => { if(done) return; done = true; resolve(); };
-
-        scene.addEventListener("seeked", finish, { once: true });
-
-        try{
-          const dur = scene.duration || (START_AT + 1);
-          scene.currentTime = Math.min(START_AT, Math.max(0, dur - 0.2));
-        }catch(_){
-          finish();
-          return;
-        }
-
-        setTimeout(finish, 280);
-      });
-    }
-
     function resetUI(){
       stopFireworks();
       whiteout.classList.remove("on");
@@ -528,7 +484,6 @@ Gracias por ser mi persona en este mundo tan raro, mi niña. Te quiero más de l
       longMsg.textContent = "";
     }
 
-    // ====== Final: blanco 2s -> fuegos -> textos ======
     async function startFinale(){
       if(finaleStarted) return;
       finaleStarted = true;
@@ -538,21 +493,15 @@ Gracias por ser mi persona en este mundo tan raro, mi niña. Te quiero más de l
         endWatchTimer = null;
       }
 
-      // video ya no debe verse en el blanco ni después
       stage.classList.add("hideVideo");
 
       try{ scene.pause(); }catch(_){}
 
       whiteout.classList.add("on");
-
-      // fuerza repintado en iPhone
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
       await new Promise(r => setTimeout(r, WHITEOUT_MS));
-
       whiteout.classList.remove("on");
 
-      // fuegos (sin video)
       startFireworks();
     }
 
@@ -576,18 +525,41 @@ Gracias por ser mi persona en este mundo tan raro, mi niña. Te quiero más de l
       }, 140);
     }
 
-    async function startShow(){
+    // ====== KEY FIX: play() SIN await antes ======
+    function startShow(){
       resetUI();
 
-      await seekReliable();
+      // best-effort: ir a START_AT sin esperar (no mata el gesto en iPhone)
+      try{ scene.currentTime = START_AT; }catch(_){}
 
-      try{
-        await scene.play();
+      // intentamos con audio primero
+      scene.muted = false;
+
+      const p = scene.play();
+      if (p && typeof p.then === "function") {
+        p.then(() => {
+          playOverlay.classList.add("off");
+          startEndWatcher();
+          playedOnce = true;
+        }).catch(() => {
+          // fallback: muted suele funcionar donde no deja con audio
+          scene.muted = true;
+          const p2 = scene.play();
+          if (p2 && typeof p2.then === "function") {
+            p2.then(() => {
+              playOverlay.classList.add("off");
+              startEndWatcher();
+              playedOnce = true;
+            }).catch((e2) => {
+              console.log("No se pudo reproducir ni muted:", e2);
+            });
+          }
+        });
+      } else {
+        // por si algún navegador raro no devuelve promise
         playOverlay.classList.add("off");
         startEndWatcher();
-      }catch(e){
-        // Si no reproduce, dejamos el overlay
-        console.log("No se pudo reproducir:", e);
+        playedOnce = true;
       }
     }
 
@@ -605,10 +577,18 @@ Gracias por ser mi persona en este mundo tan raro, mi niña. Te quiero más de l
       console.log("No se pudo cargar el video: ./assets/show1.mp4");
     });
 
+    // iPhone a veces se pone especial con click; mejor también pointerdown/touchend
+    playBig.addEventListener("pointerdown", (e) => { e.preventDefault(); startShow(); }, { passive: false });
+    playBig.addEventListener("touchend", (e) => { e.preventDefault(); startShow(); }, { passive: false });
     playBig.addEventListener("click", () => startShow());
 
     window.addEventListener("pageshow", (e) => {
       if (e.persisted) resetUI();
+    });
+
+    // Pre-carga ligera (sin reproducir)
+    window.addEventListener("DOMContentLoaded", () => {
+      try{ scene.load(); }catch(_){}
     });
   </script>
 </body>

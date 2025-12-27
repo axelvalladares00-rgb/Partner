@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0f17" />
   <title>show1 sorpresa</title>
-  <link rel="stylesheet" href="./styles.css?v=13" />
+  <link rel="stylesheet" href="./styles.css?v=12" />
 
   <style>
-    /* ====== Escenario 16:9 centrado ====== */
-    .stageWrap{
-      display: grid;
-      place-items: center;
-      padding: 6px 0 0;
+    /* ====== Escenario centrado (16:9) ====== */
+    .centerArea{
+      display:grid;
+      place-items:center;
+      min-height: 62vh;
     }
 
     .stage{
@@ -27,26 +27,22 @@
     }
 
     .stage video{
-      position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
       object-fit: contain;
-      background: #000;
-      display: block;
+      background:#000;
+      display:block;
     }
 
-    /* Overlay del botón grande */
+    /* Botón grande centrado */
     .playOverlay{
-      position: absolute;
-      inset: 0;
-      display: grid;
-      place-items: center;
-      gap: 10px;
-      padding: 18px;
-      text-align: center;
-      background: rgba(0,0,0,.45);
-      backdrop-filter: blur(6px);
+      position:absolute;
+      inset:0;
+      display:grid;
+      place-items:center;
+      background: rgba(0,0,0,.55);
       z-index: 2;
       transition: opacity 200ms ease, transform 200ms ease;
       opacity: 1;
@@ -55,7 +51,7 @@
     .playOverlay.off{
       opacity: 0;
       transform: scale(.985);
-      pointer-events: none;
+      pointer-events:none;
     }
 
     .playBig{
@@ -73,49 +69,35 @@
     }
     .playBig:active{ transform: scale(.99); }
 
-    .hintSmall{
-      color: rgba(255,255,255,.72);
-      font-size: 12px;
-      line-height: 1.35;
-      max-width: 420px;
-      margin: 0 auto;
-    }
-
-    /* Pantalla blanca */
+    /* Pantalla blanca (muy arriba de todo) */
     .whiteout{
       position: fixed;
       inset: 0;
       background: #fff;
       opacity: 0;
       pointer-events: none;
-      z-index: 9998;
+      z-index: 2147483646;
       transition: opacity 120ms ease;
     }
-    .whiteout.on{ opacity: 1; pointer-events: auto; }
+    .whiteout.on{
+      opacity: 1;
+      pointer-events: auto;
+    }
 
-    /* Canvas fuegos */
+    /* Canvas fuegos (arriba de TODO) */
     .fxCanvas{
       position: fixed;
       inset: 0;
       width: 100%;
       height: 100%;
-      z-index: 9999;
+      z-index: 2147483647;
       pointer-events: none;
       opacity: 0;
       transition: opacity 180ms ease;
     }
     .fxCanvas.on{ opacity: 1; }
 
-    .msgBox{
-      margin-top: 12px;
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      padding: 12px;
-      display:none;
-    }
-    .msgBox.show{ display:block; }
-
+    /* Usa tu estilo de botón existente, pero por si acaso */
     .btnWide{
       width:100%;
       display:grid;
@@ -132,8 +114,6 @@
       cursor: pointer;
     }
     .btnWide:active{ transform: scale(.99); }
-
-    .card{ overflow: visible; }
   </style>
 </head>
 
@@ -143,13 +123,12 @@
 
   <main class="phone" role="main">
     <header class="top">
-      <h1>🎬 Show sorpresa</h1>
-      <p class="sub">Dale play para la magia ✨</p>
+      <h1>🎬 show1 sorpresa</h1>
     </header>
 
     <section class="card">
-      <div class="stageWrap">
-        <div class="stage" aria-label="Escenario 16:9">
+      <div class="centerArea">
+        <div class="stage">
           <video
             id="scene"
             src="./assets/show1.mp4"
@@ -160,17 +139,8 @@
 
           <div class="playOverlay" id="playOverlay">
             <button class="playBig" id="playBig" type="button">▶️ Dale play para la magia</button>
-            <p class="hintSmall">
-              (Al terminar: blanco 2s + fuegos 🎆)
-            </p>
           </div>
         </div>
-      </div>
-
-      <div class="msgBox" id="msgBox" aria-live="polite">
-        <p style="margin:0; font-size:16px; line-height:1.35;">
-          ✨ Aquí va tu mensaje final (lo cambiamos cuando me digas cuál).
-        </p>
       </div>
     </section>
 
@@ -183,20 +153,20 @@
 
   <script>
     // ====== CONFIG ======
-    const START_AT     = 4;      // arranca desde el segundo 4
-    const WHITEOUT_MS  = 2000;   // blanco 2s (lo que pediste)
-    const FIREWORKS_MS = 3200;   // fuegos ~3.2s
-    const END_GUARD    = 0.12;   // fallback: considera "final" si faltan <0.12s
+    const START_AT     = 4;       // arranca desde el segundo 4
+    const WHITEOUT_MS  = 2000;    // blanco 2s
+    const FIREWORKS_MS = 3200;    // fuegos ~3.2s
+    const END_GUARD    = 0.12;    // fallback por tiempo
 
     const scene = document.getElementById("scene");
     const playOverlay = document.getElementById("playOverlay");
     const playBig = document.getElementById("playBig");
     const whiteout = document.getElementById("whiteout");
     const canvas = document.getElementById("fxCanvas");
-    const msgBox = document.getElementById("msgBox");
 
     let metadataReady = false;
     let finaleStarted = false;
+    let endWatchTimer = null;
 
     // ====== Canvas setup ======
     const ctx = canvas.getContext("2d");
@@ -216,7 +186,7 @@
     function rand(min, max){ return Math.random() * (max - min) + min; }
 
     function burst(x, y){
-      const count = 46;
+      const count = 48;
       for(let i=0;i<count;i++){
         const a = rand(0, Math.PI * 2);
         const sp = rand(2.2, 6.2);
@@ -225,7 +195,7 @@
           vx: Math.cos(a)*sp,
           vy: Math.sin(a)*sp,
           life: rand(38, 62),
-          r: rand(1.2, 2.4),
+          r: rand(1.2, 2.5),
           c: `hsl(${Math.floor(rand(0, 360))} 90% 60%)`
         });
       }
@@ -267,7 +237,6 @@
         requestAnimationFrame(fxLoop);
       }else{
         stopFireworks();
-        showFinalMessage();
       }
     }
 
@@ -285,115 +254,125 @@
       particles.length = 0;
     }
 
-    function showFinalMessage(){
-      msgBox.classList.add("show");
-    }
-
-    function resetUI(){
-      msgBox.classList.remove("show");
-      stopFireworks();
-      whiteout.classList.remove("on");
-      finaleStarted = false;
-      playOverlay?.classList.remove("off");
-    }
-
+    // ====== Helpers ======
     async function ensureMetadata(){
       if(metadataReady) return;
       await new Promise((resolve) => {
-        const onMeta = () => resolve();
-        scene.addEventListener("loadedmetadata", onMeta, { once: true });
+        scene.addEventListener("loadedmetadata", resolve, { once: true });
       });
       metadataReady = true;
     }
 
     async function seekReliable(){
       await ensureMetadata();
-      return await new Promise((resolve) => {
+      await new Promise((resolve) => {
         let done = false;
         const finish = () => { if(done) return; done = true; resolve(); };
 
-        const onSeeked = () => {
-          scene.removeEventListener("seeked", onSeeked);
-          finish();
-        };
-        scene.addEventListener("seeked", onSeeked, { once: true });
+        scene.addEventListener("seeked", finish, { once: true });
 
         try{
-          const dur = scene.duration || (START_AT + 0.5);
+          const dur = scene.duration || (START_AT + 1);
           scene.currentTime = Math.min(START_AT, Math.max(0, dur - 0.2));
         }catch(_){
-          scene.removeEventListener("seeked", onSeeked);
           finish();
           return;
         }
 
-        setTimeout(() => {
-          scene.removeEventListener("seeked", onSeeked);
-          finish();
-        }, 260);
+        setTimeout(finish, 280);
       });
     }
 
-    // ====== FINAL: blanco 2s -> fuegos ======
+    function resetUI(){
+      stopFireworks();
+      whiteout.classList.remove("on");
+      finaleStarted = false;
+      if(endWatchTimer){
+        clearInterval(endWatchTimer);
+        endWatchTimer = null;
+      }
+    }
+
+    // ====== Final: blanco 2s -> fuegos ======
     async function startFinale(){
       if(finaleStarted) return;
       finaleStarted = true;
 
+      if(endWatchTimer){
+        clearInterval(endWatchTimer);
+        endWatchTimer = null;
+      }
+
       try{ scene.pause(); }catch(_){}
 
-      // Enciende blanco
       whiteout.classList.add("on");
 
-      // Fuerza 2 frames para asegurar que el blanco SE PINTE antes de esperar
+      // Asegura repintado en móvil (2 frames)
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
-      // Mantén el blanco 2s exactos
       await new Promise(r => setTimeout(r, WHITEOUT_MS));
 
-      // Apaga blanco y enciende fuegos
       whiteout.classList.remove("on");
+
       startFireworks();
     }
 
-    async function startShowByClick(){
+    // Watcher extra (por si "ended" falla en ciertos teléfonos)
+    function startEndWatcher(){
+      if(endWatchTimer) clearInterval(endWatchTimer);
+
+      endWatchTimer = setInterval(() => {
+        if(finaleStarted) return;
+
+        // ended directo
+        if(scene.ended) {
+          startFinale();
+          return;
+        }
+
+        // por tiempo (cuando duration existe)
+        const dur = scene.duration;
+        if(Number.isFinite(dur) && dur > 0){
+          if(scene.currentTime >= dur - END_GUARD){
+            startFinale();
+          }
+        }
+      }, 120);
+    }
+
+    async function startShow(){
       resetUI();
+
       await seekReliable();
 
       try{
-        scene.loop = false;
         await scene.play();
-        playOverlay?.classList.add("off");
+        playOverlay.classList.add("off");
+        startEndWatcher();
       }catch(e){
+        // Si no reproduce, nos quedamos con el overlay visible (no mostramos texto extra)
         console.log("No se pudo reproducir:", e);
       }
     }
 
-    // ====== EVENTS ======
-    // 1) Lo normal: ended
-    scene.addEventListener("ended", () => {
-      startFinale();
-    });
+    // Eventos (los dejamos aunque exista watcher)
+    scene.addEventListener("ended", () => startFinale());
 
-    // 2) Fallback: si algunos teléfonos no disparan ended, detecta el final por tiempo
-    scene.addEventListener("timeupdate", () => {
-      if(finaleStarted) return;
-      if(!scene.duration || !Number.isFinite(scene.duration)) return;
-      if(scene.currentTime >= scene.duration - END_GUARD){
+    // iPhone: si se fuera a fullscreen y vuelve, intenta finale
+    scene.addEventListener("webkitendfullscreen", () => {
+      // si ya estaba al final, dispara
+      const dur = scene.duration;
+      if(!finaleStarted && Number.isFinite(dur) && scene.currentTime >= dur - 0.25){
         startFinale();
       }
     });
 
     scene.addEventListener("error", () => {
-      if(playOverlay){
-        playOverlay.classList.remove("off");
-        const hint = playOverlay.querySelector(".hintSmall");
-        if(hint) hint.textContent = "No se pudo cargar el video. Revisa: assets/show1.mp4 (nombre exacto).";
-      }
+      // Sin texto extra, solo log
+      console.log("No se pudo cargar el video: ./assets/show1.mp4");
     });
 
-    playBig.addEventListener("click", () => {
-      startShowByClick();
-    });
+    playBig.addEventListener("click", () => startShow());
 
     window.addEventListener("pageshow", (e) => {
       if (e.persisted) resetUI();

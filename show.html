@@ -8,42 +8,77 @@
   <link rel="stylesheet" href="./styles.css?v=12" />
 
   <style>
-    .videoFrame{
-      margin-top: 12px;
+    /* ====== Escenario 16:9 centrado ====== */
+    .stageWrap{
+      display: grid;
+      place-items: center;
+      padding: 6px 0 0;
+    }
+
+    .stage{
+      width: min(92vw, 520px);
+      aspect-ratio: 16 / 9;
       border-radius: 18px;
       overflow: hidden;
       border: 1px solid rgba(255,255,255,.12);
       background: rgba(0,0,0,.35);
       position: relative;
-    }
-    .videoFrame video{
-      display:block;
-      width: 100%;
-      height: auto;
-      background: #000;
-      object-fit: contain;
+      isolation: isolate;
     }
 
-    /* Máscara inicial (para que nunca sea “pantalla negra” sin explicación) */
-    .startMask{
-      position:absolute;
-      inset:0;
-      background:#000;
-      opacity: 1;
-      transition: opacity 220ms ease;
-      display:grid;
-      place-items:center;
-      padding: 16px;
-      text-align:center;
-      color: rgba(255,255,255,.88);
-      font-size: 13px;
-      line-height: 1.35;
+    .stage video{
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+      display: block;
     }
-    .startMask.off{ opacity: 0; pointer-events:none; }
-    .startMask .small{
-      margin-top: 8px;
-      color: rgba(255,255,255,.68);
+
+    /* Overlay del botón grande */
+    .playOverlay{
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      gap: 10px;
+      padding: 18px;
+      text-align: center;
+      background: rgba(0,0,0,.45);
+      backdrop-filter: blur(6px);
+      z-index: 2;
+      transition: opacity 200ms ease, transform 200ms ease;
+      opacity: 1;
+      transform: scale(1);
+    }
+    .playOverlay.off{
+      opacity: 0;
+      transform: scale(.985);
+      pointer-events: none;
+    }
+
+    .playBig{
+      width: min(92%, 420px);
+      min-height: 56px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.10);
+      color: rgba(255,255,255,.92);
+      font-size: 16px;
+      font-weight: 650;
+      letter-spacing: .2px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .playBig:active{ transform: scale(.99); }
+
+    .hintSmall{
+      color: rgba(255,255,255,.72);
       font-size: 12px;
+      line-height: 1.35;
+      max-width: 420px;
+      margin: 0 auto;
     }
 
     /* Pantalla blanca */
@@ -97,6 +132,9 @@
       cursor: pointer;
     }
     .btnWide:active{ transform: scale(.99); }
+
+    /* Para que se vea bien sin “cortar” contenido */
+    .card{ overflow: visible; }
   </style>
 </head>
 
@@ -106,26 +144,27 @@
 
   <main class="phone" role="main">
     <header class="top">
-      <h1>🎬 show1 sorpresa</h1>
-      <p class="sub">Entra y se reproduce solo. Al terminar: flash blanco + celebración 🎆</p>
+      <h1>🎬 Show sorpresa</h1>
+      <p class="sub">Dale play para la magia ✨</p>
     </header>
 
     <section class="card">
-      <h2>Escena</h2>
-      <p style="margin:0 0 10px;">Debe existir: <b>assets/show1.mp4</b></p>
+      <div class="stageWrap">
+        <div class="stage" aria-label="Escenario 16:9">
+          <video
+            id="scene"
+            src="./assets/show1.mp4"
+            playsinline
+            webkit-playsinline
+            preload="auto"
+          ></video>
 
-      <div class="videoFrame">
-        <video
-          id="scene"
-          src="./assets/show1.mp4"
-          playsinline
-          webkit-playsinline
-          preload="auto"
-        ></video>
-
-        <div class="startMask" id="startMask">
-          ⏳ Cargando el show…
-          <div class="small">Si no inicia, toca la pantalla una vez para activar el video.</div>
+          <div class="playOverlay" id="playOverlay">
+            <button class="playBig" id="playBig" type="button">▶️ Dale play para la magia</button>
+            <p class="hintSmall">
+              (El video solo inicia cuando tú tocas play. Al terminar: flash blanco + fuegos 🎆)
+            </p>
+          </div>
         </div>
       </div>
 
@@ -150,14 +189,14 @@
     const FIREWORKS_MS = 3200;  // fuegos ~3.2s
 
     const scene = document.getElementById("scene");
+    const playOverlay = document.getElementById("playOverlay");
+    const playBig = document.getElementById("playBig");
     const whiteout = document.getElementById("whiteout");
     const canvas = document.getElementById("fxCanvas");
     const msgBox = document.getElementById("msgBox");
-    const startMask = document.getElementById("startMask");
 
     let triggered = false;
     let metadataReady = false;
-    let hasActuallyPlayed = false; // evita “ended raro”/secuencias sin play real
 
     // ====== Canvas setup ======
     const ctx = canvas.getContext("2d");
@@ -250,18 +289,12 @@
       msgBox.classList.add("show");
     }
 
-    // ====== Helpers ======
     function resetUI(){
       msgBox.classList.remove("show");
       stopFireworks();
       whiteout.classList.remove("on");
       triggered = false;
-      hasActuallyPlayed = false;
-
-      if(startMask){
-        startMask.classList.remove("off");
-        startMask.innerHTML = `⏳ Cargando el show…<div class="small">Si no inicia, toca la pantalla una vez para activar el video.</div>`;
-      }
+      playOverlay?.classList.remove("off");
     }
 
     async function ensureMetadata(){
@@ -275,7 +308,6 @@
 
     async function seekReliable(){
       await ensureMetadata();
-
       return await new Promise((resolve) => {
         let done = false;
         const finish = () => { if(done) return; done = true; resolve(); };
@@ -287,7 +319,8 @@
         scene.addEventListener("seeked", onSeeked, { once: true });
 
         try{
-          scene.currentTime = Math.min(START_AT, Math.max(0, (scene.duration || START_AT) - 0.2));
+          const dur = scene.duration || (START_AT + 0.5);
+          scene.currentTime = Math.min(START_AT, Math.max(0, dur - 0.2));
         }catch(_){
           scene.removeEventListener("seeked", onSeeked);
           finish();
@@ -314,62 +347,42 @@
       startFireworks();
     }
 
-    async function tryAutoplay(){
+    async function startShowByClick(){
       resetUI();
-
-      // claves para móvil: que el “muted” esté también como atributo
-      scene.muted = true;
-      scene.setAttribute("muted", "");
-      scene.setAttribute("playsinline", "");
-      scene.setAttribute("webkit-playsinline", "");
 
       await seekReliable();
 
+      // Con click del usuario, ya debería reproducir sin problema
       try{
         await scene.play();
-        // si empezó, ocultamos máscara
-        // (playing es más confiable)
+        playOverlay?.classList.add("off");
       }catch(e){
-        // queda el texto en la máscara para que el usuario toque
-        console.log("Autoplay bloqueado:", e);
+        // Si algo raro pasa, dejamos el overlay visible
+        console.log("No se pudo reproducir:", e);
       }
     }
 
-    async function playOnGesture(){
-      try{
-        await scene.play();
-      }catch(_){}
-    }
-
-    // ====== EVENTS ======
-    scene.addEventListener("playing", () => {
-      hasActuallyPlayed = true;
-      startMask?.classList.add("off");
-    }, { once: true });
-
+    // Al terminar el video -> flash + fuegos
     scene.addEventListener("ended", () => {
-      // solo corre si de verdad estuvo reproduciéndose
-      if(!hasActuallyPlayed) return;
       whiteoutSequence();
     });
 
     scene.addEventListener("error", () => {
-      if(startMask){
-        startMask.innerHTML = `❌ No se pudo cargar el video.<div class="small">Revisa que exista EXACTO: assets/show1.mp4 (mismo nombre/mayúsculas) y que el MP4 sea compatible.</div>`;
+      // Si falla el video, dejamos el overlay y cambiamos el texto
+      if(playOverlay){
+        playOverlay.classList.remove("off");
+        playOverlay.querySelector(".hintSmall").textContent =
+          "No se pudo cargar el video. Revisa que exista: assets/show1.mp4 (nombre exacto).";
       }
     });
 
-    // Si el autoplay fue bloqueado, un toque en cualquier parte lo inicia
-    document.addEventListener("pointerdown", () => {
-      playOnGesture();
-    }, { passive: true });
-
-    window.addEventListener("DOMContentLoaded", () => {
-      tryAutoplay();
+    playBig?.addEventListener("click", () => {
+      startShowByClick();
     });
 
+    // Si vuelves con back/forward en iOS, resetea
     window.addEventListener("pageshow", (e) => {
-      if (e.persisted) tryAutoplay();
+      if (e.persisted) resetUI();
     });
   </script>
 </body>

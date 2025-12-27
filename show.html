@@ -5,10 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b0f17" />
   <title>show1 sorpresa</title>
-  <link rel="stylesheet" href="./styles.css?v=14" />
+  <link rel="stylesheet" href="./styles.css?v=15" />
 
   <style>
-    /* ====== Escenario centrado (16:9) ====== */
     .centerArea{
       display: grid;
       place-items: center;
@@ -27,15 +26,18 @@
       isolation: isolate;
       margin-inline: auto;
 
+      /* 👇 Nudge a la izquierda para iPhone */
+      transform: translateX(-12px) translateY(0) scale(1);
+
       transition: opacity 260ms ease, transform 260ms ease;
       opacity: 1;
-      transform: translateY(0) scale(1);
+      pointer-events: auto;
     }
 
-    .stage.fadeOut{
+    .stage.hiddenNow{
       opacity: 0;
-      transform: translateY(8px) scale(.99);
       pointer-events: none;
+      transform: translateX(-12px) translateY(8px) scale(.99);
     }
 
     .stage video{
@@ -47,11 +49,10 @@
       background:#000;
       display:block;
 
-      /* 🔥 Forzamos centrado (y un pelín a la IZQ por tu iPhone) */
-      object-position: 48% 50%;
+      /* 👇 Empuja el encuadre un poco a la IZQ */
+      object-position: 44% 50%;
     }
 
-    /* Overlay Play */
     .playOverlay{
       position:absolute;
       inset:0;
@@ -85,7 +86,6 @@
     }
     .playBig:active{ transform: scale(.99); }
 
-    /* Pantalla blanca (arriba de todo) */
     .whiteout{
       position: fixed;
       inset: 0;
@@ -100,7 +100,6 @@
       pointer-events: auto;
     }
 
-    /* Canvas fuegos (arriba de TODO) */
     .fxCanvas{
       position: fixed;
       inset: 0;
@@ -113,7 +112,6 @@
     }
     .fxCanvas.on{ opacity: 1; }
 
-    /* Por si tu styles.css no lo trae */
     .btnWide{
       width:100%;
       display:grid;
@@ -168,9 +166,8 @@
   </main>
 
   <script>
-    // ====== CONFIG ======
     const WHITEOUT_MS  = 2000;   // blanco 2s
-    const FIREWORKS_MS = 3200;   // fuegos ~3.2s
+    const FIREWORKS_MS = 4200;   // fuegos más largos
     const END_GUARD    = 0.18;   // margen por si "ended" falla
 
     const stage = document.getElementById("stage");
@@ -183,7 +180,7 @@
     let finaleStarted = false;
     let endWatchTimer = null;
 
-    // ====== Canvas setup ======
+    // ===== Canvas setup =====
     const ctx = canvas.getContext("2d");
     let dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
 
@@ -196,22 +193,40 @@
     window.addEventListener("resize", resizeCanvas);
     resizeCanvas();
 
-    // ====== Fireworks ======
+    // ===== Fireworks (más extravagantes) =====
     const particles = [];
     function rand(min, max){ return Math.random() * (max - min) + min; }
 
-    function burst(x, y){
-      const count = 52;
+    function burst(x, y, power = 1){
+      const base = 80;                    // más partículas
+      const count = Math.floor(base * power);
       for(let i=0;i<count;i++){
         const a = rand(0, Math.PI * 2);
-        const sp = rand(2.2, 6.2);
+        const sp = rand(2.0, 7.8) * power;
         particles.push({
           x, y,
-          vx: Math.cos(a)*sp,
-          vy: Math.sin(a)*sp,
-          life: rand(38, 64),
-          r: rand(1.2, 2.6),
-          c: `hsl(${Math.floor(rand(0, 360))} 90% 60%)`
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp,
+          life: rand(40, 85),
+          r: rand(1.2, 3.2) * (0.9 + power*0.15),
+          hue: Math.floor(rand(0, 360)),
+          trail: []
+        });
+      }
+
+      // “anillo” extra para que se vea más wow
+      const ringCount = Math.floor(26 * power);
+      for(let i=0;i<ringCount;i++){
+        const a = (i / ringCount) * Math.PI * 2;
+        const sp = rand(3.2, 5.2) * power;
+        particles.push({
+          x, y,
+          vx: Math.cos(a) * sp,
+          vy: Math.sin(a) * sp,
+          life: rand(48, 82),
+          r: rand(1.2, 2.4),
+          hue: (Math.floor(rand(0, 360)) + 40) % 360,
+          trail: []
         });
       }
     }
@@ -223,37 +238,81 @@
       if(!fxStart) fxStart = ts;
       const t = ts - fxStart;
 
+      // fondo transparente
       ctx.clearRect(0,0,window.innerWidth, window.innerHeight);
 
-      if(ts - lastBurst > 420){
+      // brillo tipo “extravagante”
+      ctx.globalCompositeOperation = "lighter";
+
+      // más bursts y algunos mega
+      const interval = 260;
+      if(ts - lastBurst > interval){
         lastBurst = ts;
-        burst(rand(60, window.innerWidth-60), rand(90, window.innerHeight*0.55));
+
+        const x = rand(40, window.innerWidth - 40);
+        const y = rand(80, window.innerHeight * 0.52);
+
+        const mega = Math.random() < 0.22;
+        burst(x, y, mega ? rand(1.25, 1.6) : rand(0.95, 1.15));
+
+        // burst secundario cercano (doble explosión)
+        if(Math.random() < 0.35){
+          burst(x + rand(-60, 60), y + rand(-35, 35), rand(0.75, 1.0));
+        }
       }
 
       for(let i=particles.length-1; i>=0; i--){
         const p = particles[i];
-        p.vy += 0.06;
+
+        // trail (cola)
+        p.trail.push({x: p.x, y: p.y});
+        if(p.trail.length > 6) p.trail.shift();
+
+        // física
+        p.vy += 0.055;
         p.x += p.vx;
         p.y += p.vy;
         p.life -= 1;
 
-        const alpha = Math.max(0, Math.min(1, p.life/64));
+        const alpha = Math.max(0, Math.min(1, p.life/85));
+
+        // dibuja trail
+        ctx.globalAlpha = alpha * 0.55;
+        ctx.strokeStyle = `hsla(${p.hue} 95% 65% / 1)`;
+        ctx.lineWidth = Math.max(1, p.r * 0.8);
+        ctx.beginPath();
+        for(let k=0; k<p.trail.length; k++){
+          const pt = p.trail[k];
+          if(k === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        }
+        ctx.stroke();
+
+        // spark principal
         ctx.globalAlpha = alpha;
-        ctx.fillStyle = p.c;
+        ctx.fillStyle = `hsla(${p.hue} 95% 65% / 1)`;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
         ctx.fill();
 
+        // glow extra
+        ctx.globalAlpha = alpha * 0.35;
+        ctx.fillStyle = `hsla(${p.hue} 95% 70% / 1)`;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * 2.1, 0, Math.PI*2);
+        ctx.fill();
+
         if(p.life <= 0) particles.splice(i,1);
       }
+
       ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
 
       if(t < FIREWORKS_MS){
         requestAnimationFrame(fxLoop);
       }else{
         stopFireworks();
-        // 👇 al terminar fuegos: quitamos el escenario y dejamos el fondo
-        fadeOutStageToBackground();
+        // al terminar: queda solo el fondo (no stage)
       }
     }
 
@@ -271,14 +330,6 @@
       particles.length = 0;
     }
 
-    function fadeOutStageToBackground(){
-      if(!stage) return;
-      stage.classList.add("fadeOut");
-      setTimeout(() => {
-        stage.style.display = "none";
-      }, 280);
-    }
-
     function resetUI(){
       stopFireworks();
       whiteout.classList.remove("on");
@@ -289,16 +340,15 @@
         endWatchTimer = null;
       }
 
-      // si vuelves a entrar/recargar
+      // restaura stage por si recargas
       if(stage){
         stage.style.display = "";
-        stage.classList.remove("fadeOut");
+        stage.classList.remove("hiddenNow");
       }
 
       playOverlay.classList.remove("off");
     }
 
-    // ====== Final: blanco 2s -> fuegos ======
     async function startFinale(){
       if(finaleStarted) return;
       finaleStarted = true;
@@ -308,21 +358,25 @@
         endWatchTimer = null;
       }
 
+      // corta video y OCULTA el stage para que NO se vea debajo del blanco
       try{ scene.pause(); }catch(_){}
+      if(stage) stage.classList.add("hiddenNow");
 
+      // blanco 2s
       whiteout.classList.add("on");
-
-      // asegura repintado en móvil
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
       await new Promise(r => setTimeout(r, WHITEOUT_MS));
-
       whiteout.classList.remove("on");
 
+      // fuegos en el fondo
       startFireworks();
+
+      // ya no mostramos el stage nunca más en esta visita
+      setTimeout(() => {
+        if(stage) stage.style.display = "none";
+      }, 260);
     }
 
-    // Fallback por si "ended" no llega
     function startEndWatcher(){
       if(endWatchTimer) clearInterval(endWatchTimer);
 
@@ -343,14 +397,13 @@
       }, 120);
     }
 
-    // ====== IMPORTANTÍSIMO EN TELÉFONO ======
     function startShowFromClick(){
       resetUI();
 
       // desde 0
       try{ scene.currentTime = 0; }catch(_){}
 
-      // ayuda para iPhone
+      // iPhone: permite play tras click; muted ayuda a que sea más estable
       scene.muted = true;
 
       const onPlaying = () => {
@@ -367,11 +420,18 @@
       }
     }
 
-    // ====== EVENTS ======
     scene.addEventListener("ended", () => startFinale());
+
+    // Por si iOS hace cosas raras al volver de fullscreen
+    scene.addEventListener("webkitendfullscreen", () => {
+      const dur = scene.duration;
+      if(!finaleStarted && Number.isFinite(dur) && scene.currentTime >= dur - 0.25){
+        startFinale();
+      }
+    });
+
     playBig.addEventListener("click", startShowFromClick);
 
-    // iOS bfcache
     window.addEventListener("pageshow", (e) => {
       if (e.persisted) resetUI();
     });

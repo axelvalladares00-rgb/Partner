@@ -1,1 +1,124 @@
-<!doctype html> <html lang="es"> <head> <meta charset="utf-8" /> <meta name="viewport" content="width=device-width, initial-scale=1" /> <meta name="theme-color" content="#0b0f17" /> <title>Para mi partner</title> <link rel="stylesheet" href="./styles.css?v=10" /> </head> <body class="noScroll"> <main class="phone" role="main"> <header class="top"> <h1>💙 Hola, ¿cómo estás?</h1> </header> <section class="menu" aria-label="Opciones"> <a class="tile primary" href="./hoy.html" aria-label="Mini dosis de cariño"> <div class="tileTitle">🪄 Mini dosis de cariño</div> <div class="tileDesc">Toca para entrar ✨</div> </a> <!-- Fase 2: Show con video show1.mp4 + flash blanco + fuegos --> <a class="tile" href="./show.html" aria-label="Show sorpresa (show1)"> <div class="tileTitle">TOCA AQUÍ POR FAVOR</div> </a> <a class="tile disabled" href="javascript:void(0)" aria-disabled="true"> <div class="tileTitle">⏳ Coming soon</div> <div class="tileDesc">Wait for it…</div> </a> </section> <footer class="footer"> <small>Hecho con cariño.</small> </footer> </main> </body> </html>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0f17" />
+  <title>Para mi partner</title>
+  <link rel="stylesheet" href="./styles.css?v=11" />
+
+  <style>
+    /* Solo para el bloqueo + contador (no choca con tu styles.css) */
+    .tile.locked{
+      opacity: .65;
+      cursor: not-allowed;
+      pointer-events: auto; /* dejamos que JS capture click y lo bloquee */
+    }
+    .tile.locked .tileTitle{
+      filter: grayscale(.1);
+    }
+    .countdownText{
+      margin-top: 6px;
+      font-size: 13px;
+      color: rgba(255,255,255,.80);
+      line-height: 1.25;
+    }
+    .countdownSmall{
+      margin-top: 2px;
+      font-size: 12px;
+      color: rgba(255,255,255,.60);
+    }
+  </style>
+</head>
+
+<body class="noScroll">
+  <main class="phone" role="main">
+    <header class="top">
+      <h1>💙 Hola, ¿cómo estás?</h1>
+    </header>
+
+    <section class="menu" aria-label="Opciones">
+      <a class="tile primary" href="./hoy.html" aria-label="Mini dosis de cariño">
+        <div class="tileTitle">🪄 Mini dosis de cariño</div>
+        <div class="tileDesc">Toca para entrar ✨</div>
+      </a>
+
+      <!-- BLOQUEADO HASTA 01/01/2026 00:01 (hora del teléfono) -->
+      <a
+        class="tile locked"
+        id="showLink"
+        href="./show.html"
+        aria-label="Show sorpresa (bloqueado)"
+        aria-disabled="true"
+      >
+        <div class="tileTitle" id="showTitle">🔒 🎊🎉TOCA AQUÍ POR FAVOR🍾🥂🍻</div>
+        <div class="countdownText" id="countdownText">Cargando contador…</div>
+        <div class="countdownSmall" id="countdownSmall">Se desbloquea el 01/01/2026 a las 00:01</div>
+      </a>
+
+      <a class="tile disabled" href="javascript:void(0)" aria-disabled="true">
+        <div class="tileTitle">⏳ Coming soon</div>
+        <div class="tileDesc">Wait for it…</div>
+      </a>
+    </section>
+
+    <footer class="footer">
+      <small>Hecho con cariño.</small>
+    </footer>
+  </main>
+
+  <script>
+    // ====== AJUSTE AQUÍ ======
+    // Se desbloquea: 01/01/2026 00:01 (en la hora/zona del teléfono)
+    const TARGET_LOCAL = new Date(2026, 0, 1, 0, 1, 0); // (año, mes-1, día, hora, min, seg)
+
+    const link = document.getElementById("showLink");
+    const title = document.getElementById("showTitle");
+    const countdownText = document.getElementById("countdownText");
+
+    function pad2(n){ return String(n).padStart(2, "0"); }
+
+    function unlock(){
+      link.classList.remove("locked");
+      link.removeAttribute("aria-disabled");
+      link.setAttribute("aria-label", "Show sorpresa (desbloqueado)");
+      title.textContent = "🎬 TOCA AQUÍ (YA SE PUEDE)";
+
+      countdownText.textContent = "✨ ¡Listo! Ya lo puedes abrir ✨";
+    }
+
+    function lockClick(e){
+      // Si está bloqueado, no deja entrar
+      if(link.classList.contains("locked")){
+        e.preventDefault();
+      }
+    }
+
+    link.addEventListener("click", lockClick);
+
+    function tick(){
+      const now = new Date();
+      let diff = TARGET_LOCAL.getTime() - now.getTime();
+
+      if(diff <= 0){
+        unlock();
+        return;
+      }
+
+      // cálculo
+      const sec = Math.floor(diff / 1000);
+      const days = Math.floor(sec / 86400);
+      const hrs = Math.floor((sec % 86400) / 3600);
+      const mins = Math.floor((sec % 3600) / 60);
+      const secs = sec % 60;
+
+      const dLabel = days > 0 ? `${days}d ` : "";
+      countdownText.textContent = `⏳ Falta: ${dLabel}${pad2(hrs)}:${pad2(mins)}:${pad2(secs)}`;
+    }
+
+    // inicia
+    tick();
+    setInterval(tick, 1000);
+  </script>
+</body>
+</html>
